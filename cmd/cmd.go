@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"mytodo/lib/commands"
 	"mytodo/lib/tasklist"
+	"os"
+	"path"
 )
 
 var (
@@ -11,11 +13,16 @@ var (
 )
 
 const (
-	PersistentFile = ".mytodo.json"
+	TrackFile = ".mytodo.json"
 )
 
 func init() {
-	t := tasklist.NewTaskList(PersistentFile)
+	homePath := os.Getenv("HOME")
+	if homePath == "" {
+		homePath = "."
+	}
+
+	t := tasklist.NewTaskList(path.Join(homePath, TrackFile))
 	commands.SetMasterTasks(t)
 	err := commands.GetTaskList().Load()
 	if err != nil {
