@@ -12,8 +12,9 @@ type TaskList struct {
 }
 
 type Task struct {
-	Content string `json:"content"`
-	Done    bool   `json:"done"`
+	Content  string   `json:"content"`
+	Done     bool     `json:"done"`
+	Comments []string `json:"comments,omitempty"`
 }
 
 func NewTaskList(filepath string) *TaskList {
@@ -89,4 +90,22 @@ func (t *TaskList) GetAllTasks() []Task {
 
 	copy = append(copy, t.Tasks[0:]...)
 	return copy
+}
+
+func (t *TaskList) AddComment(index int, comment string) {
+	if index < 0 || index >= len(t.Tasks) {
+		return
+	}
+
+	t.Tasks[index].Comments = append(t.Tasks[index].Comments, comment)
+	t.Save()
+}
+func (t *TaskList) GetComments(index int) []string {
+	if index < 0 || index >= len(t.Tasks) {
+		return nil
+	}
+	copies := make([]string, 0, len(t.Tasks[index].Comments))
+	copies = append(copies, t.Tasks[index].Comments[0:]...)
+
+	return copies
 }

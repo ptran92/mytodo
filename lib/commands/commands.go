@@ -24,6 +24,12 @@ func nicePrint(writer io.Writer, tasks []tasklist.Task) error {
 	success := color.New(color.FgGreen, color.Bold).Sprintf
 	info := color.New(color.FgCyan).Sprintf
 
+	commentPrinter := func(comments []string) {
+		for _, comment := range comments {
+			fmt.Fprintf(writer, "\t\t- %s\n", comment)
+		}
+	}
+
 	// Write each task with appropriate style and icon
 	for index, task := range tasks {
 		var formatted string
@@ -36,6 +42,7 @@ func nicePrint(writer io.Writer, tasks []tasklist.Task) error {
 		if _, err := fmt.Fprintln(writer, formatted); err != nil {
 			return fmt.Errorf("failed to write task %s: %w", task.Content, err)
 		}
+		commentPrinter(task.Comments)
 	}
 	return nil
 }
@@ -192,6 +199,27 @@ func PrepareCommands() *cobra.Command {
 		},
 	}
 
+	addComment := &cobra.Command{
+		Use:   "cm [task number] [comment]",
+		Short: "Add a comment to a task by its number",
+		Args:  cobra.MinimumNArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			if GetTaskList().NumberOfTasks() == 0 {
+				fmt.Println("No tasks to comment on.")
+				return
+			}
+			defer printToStdout()
+
+			id, err := indexFromArgument(args)
+			if err != nil {
+				return
+			}
+
+			comment := args[1]
+			GetTaskList().AddComment(id, comment)
+		},
+	}
+
 	rootCmd.AddCommand(
 		addCmd,
 		listCmd,
@@ -199,6 +227,7 @@ func PrepareCommands() *cobra.Command {
 		doneCommand,
 		undoneCommand,
 		editCommand,
+		addComment,
 	)
 	return rootCmd
 }
