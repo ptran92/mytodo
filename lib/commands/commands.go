@@ -19,7 +19,7 @@ func SetMasterTasks(t *tasklist.TaskList) {
 	MasterTasks = t
 }
 
-func NicePrint(writer io.Writer, tasks []tasklist.Task) error {
+func nicePrint(writer io.Writer, tasks []tasklist.Task) error {
 	// Define styled printers
 	success := color.New(color.FgGreen, color.Bold).Sprintf
 	info := color.New(color.FgCyan).Sprintf
@@ -58,6 +58,7 @@ func PrepareCommands() *cobra.Command {
 		Short: "Add a new task",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
+			defer printToStdout()
 			todo := args[0]
 			if verbose {
 				fmt.Println("Adding task:", todo)
@@ -69,6 +70,7 @@ func PrepareCommands() *cobra.Command {
 			}
 
 			GetTaskList().AddTask(&task)
+
 		},
 	}
 
@@ -81,9 +83,7 @@ func PrepareCommands() *cobra.Command {
 				return
 			}
 
-			tasks := GetTaskList().GetAllTasks()
-
-			NicePrint(os.Stdout, tasks)
+			printToStdout()
 		},
 	}
 
@@ -96,6 +96,7 @@ func PrepareCommands() *cobra.Command {
 				fmt.Println("No tasks to remove.")
 				return
 			}
+			defer printToStdout()
 
 			id, err := indexFromArgument(args)
 			if err != nil {
@@ -107,6 +108,7 @@ func PrepareCommands() *cobra.Command {
 			}
 
 			GetTaskList().RemoveTask(id)
+
 		},
 	}
 
@@ -119,6 +121,7 @@ func PrepareCommands() *cobra.Command {
 				fmt.Println("No tasks to mark as done.")
 				return
 			}
+			defer printToStdout()
 
 			id, err := indexFromArgument(args)
 			if err != nil {
@@ -145,6 +148,7 @@ func PrepareCommands() *cobra.Command {
 				fmt.Println("No tasks to mark as not done.")
 				return
 			}
+			defer printToStdout()
 
 			id, err := indexFromArgument(args)
 			if err != nil {
@@ -170,6 +174,7 @@ func PrepareCommands() *cobra.Command {
 				fmt.Println("No tasks to edit.")
 				return
 			}
+			defer printToStdout()
 
 			id, err := indexFromArgument(args)
 			if err != nil {
@@ -205,4 +210,9 @@ func indexFromArgument(args []string) (int, error) {
 		return -1, fmt.Errorf("invalid task number")
 	}
 	return id, nil
+}
+
+func printToStdout() {
+	tasks := GetTaskList().GetAllTasks()
+	nicePrint(os.Stdout, tasks)
 }
