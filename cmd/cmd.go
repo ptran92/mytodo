@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"mytodo/lib/agent"
 	"mytodo/lib/commands"
 	"mytodo/lib/tasklist"
 	"os"
@@ -31,8 +32,28 @@ func init() {
 }
 
 func main() {
+	llmAgent := agent.CreateLlmAgentDefault()
+
+	commands.SetAgent(llmAgent)
+
 	err := commands.PrepareCommands().Execute()
 	if err != nil {
 		fmt.Println("Error:", err)
 	}
+
+	// // Example usage
+	// response, err := llmAgent.Prompt("Hello, Ollama! What is the capital of France?")
+	// if err != nil {
+	// 	fmt.Println("Error:", err)
+	// 	return
+	// }
+
+	// text, err := response.GetResponse()
+	// if err != nil {
+	// 	fmt.Println("Error parsing JSON response:", err)
+	// 	return
+	// }
+	// fmt.Println("LLM Response:")
+	// fmt.Println(text)
+
 }
