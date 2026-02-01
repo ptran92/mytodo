@@ -5,6 +5,11 @@ import (
 	"strings"
 )
 
+const (
+	AIEnabledEnvVar   = "USE_AI"
+	OpenAITokenEnvVar = "OPEN_AI_API_KEY"
+)
+
 func TrimResponse(s string) string {
 	begin := strings.Index(s, "[")
 	end := strings.LastIndex(s, "]")
@@ -17,5 +22,9 @@ func TrimResponse(s string) string {
 }
 
 func AgentEnabled() bool {
-	return os.Getenv("USE_AI") != ""
+	return os.Getenv(AIEnabledEnvVar) != "" || os.Getenv(OpenAITokenEnvVar) != ""
+}
+
+func GetOpenAIToken() string {
+	return os.Getenv(OpenAITokenEnvVar)
 }

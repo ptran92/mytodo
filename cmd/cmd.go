@@ -13,8 +13,16 @@ var (
 	MasterTasks *tasklist.TaskList
 )
 
+type AgentBackend string
+
 const (
-	TrackFile = ".mytodo.json"
+	OpenAIAgent   AgentBackend = "OpenAI"
+	OllamaAIAgent AgentBackend = "Ollama"
+)
+
+const (
+	TrackFile            = ".mytodo.json"
+	SelectedAgentBackend = OpenAIAgent
 )
 
 func init() {
@@ -32,28 +40,23 @@ func init() {
 }
 
 func main() {
-	llmAgent := agent.CreateLlmAgentDefault()
+	var llmAgent agent.LlmAgent
+	var err error
+
+	if SelectedAgentBackend == OllamaAIAgent {
+		llmAgent = agent.CreateLlmAgentDefault()
+
+	} else if SelectedAgentBackend == OpenAIAgent {
+		llmAgent, err = agent.CreateOpenAIAgentDefault()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+	}
 
 	commands.SetAgent(llmAgent)
-
-	err := commands.PrepareCommands().Execute()
+	err = commands.PrepareCommands().Execute()
 	if err != nil {
 		fmt.Println("Error:", err)
 	}
-
-	// // Example usage
-	// response, err := llmAgent.Prompt("Hello, Ollama! What is the capital of France?")
-	// if err != nil {
-	// 	fmt.Println("Error:", err)
-	// 	return
-	// }
-
-	// text, err := response.GetResponse()
-	// if err != nil {
-	// 	fmt.Println("Error parsing JSON response:", err)
-	// 	return
-	// }
-	// fmt.Println("LLM Response:")
-	// fmt.Println(text)
-
 }
