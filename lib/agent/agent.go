@@ -145,7 +145,7 @@ func (oa *OpenAIAgent) Prompt(prompt string) (*LlmResponse, error) {
 	payload := map[string]interface{}{
 		"model":             "gpt-4.1",
 		"input":             prompt,
-		"max_output_tokens": 512,
+		"max_output_tokens": 4096,
 		"temperature":       0.7,
 	}
 

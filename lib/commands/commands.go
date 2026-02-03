@@ -240,44 +240,25 @@ func createListCmd(verbose bool) *cobra.Command {
 				return nil
 			}
 
-			if !utils.AgentEnabled() {
-				printToStdout()
-				return nil
-			}
+			// Print them to terminal directly
+			printToStdout()
 
-			// Otherwise use AI to generate report
-			// 1️⃣  Gather all tasks
-			tasks := GetTaskList().GetAllTasks()
-
-			// 2️⃣  Serialize to JSON (used by the LLM prompt)
-			b, err := json.Marshal(tasks)
-			if err != nil {
-				return fmt.Errorf("serializing tasks: %w", err)
-			}
-
-			// 3️⃣  Build the prompt
-			prompt := fmt.Sprintf(`Here is the list of tasks in JSON:
-%s
-Please output them in a readable, concise format, with tab indentation and easy to view in the terminal, numbered list. For each comment in the task, please add a new row for that. Use emoji icon if possible for Task status`, string(b))
-
-			// 4️⃣  Get formatted output from the LLM
-			resp, err := llmAgent.Prompt(prompt)
-			if err != nil {
-				return fmt.Errorf("LLM prompt error: %w", err)
-			}
-
-			out, err := resp.GetResponse()
-			if err != nil {
-				return fmt.Errorf("reading LLM response: %w", err)
-			}
-
-			// 5️⃣  Print the LLM‑generated list
-			fmt.Println(strings.Trim(strings.TrimSpace(out), "```"))
-
-			// 6️⃣  If the user asked for a summary, ask the LLM again
+			// Summarize if set
 			if summary {
-				summaryPrompt := fmt.Sprintf(`Summarize the above list in one concise sentence. Original list:
-%s`, out)
+				// 1️⃣  Gather all tasks
+				tasks := GetTaskList().GetAllTasks()
+
+				// 2️⃣  Serialize to JSON (used by the LLM prompt)
+				b, err := json.Marshal(tasks)
+				if err != nil {
+					return fmt.Errorf("serializing tasks: %w", err)
+				}
+
+				// 3️⃣  Build the prompt
+				summaryPrompt := fmt.Sprintf(`Here is the list of tasks in JSON:
+		%s
+		Summarize the above list in one concise sentence.`, string(b))
+
 				sResp, err := llmAgent.Prompt(summaryPrompt)
 				if err != nil {
 					return fmt.Errorf("LLM summary prompt error: %w", err)
