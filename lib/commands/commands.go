@@ -203,6 +203,10 @@ func PrepareCommands() *cobra.Command {
 		},
 	}
 
+	jiraSummaryCmd := NewJiraSummaryCmd()
+
+	jiraCreateCmd := NewJiraCreateCmd()
+
 	rootCmd.AddCommand(
 		addCmd,
 		listCmd,
@@ -211,6 +215,8 @@ func PrepareCommands() *cobra.Command {
 		undoneCommand,
 		editCommand,
 		addComment,
+		jiraSummaryCmd,
+		jiraCreateCmd,
 	)
 	return rootCmd
 }

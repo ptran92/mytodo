@@ -63,6 +63,7 @@ func (l *LlmResponse) GetResponse() (string, error) {
 // -----------------------------------------------------------------------------
 type LlmAgent interface {
 	Prompt(prompt string) (*LlmResponse, error)
+	AskConfirmation(question string) (bool, error)
 }
 
 // -----------------------------------------------------------------------------
@@ -118,6 +119,25 @@ func (oa *OllamaAgent) Prompt(prompt string) (*LlmResponse, error) {
 
 	// Wrap into LlmResponse
 	return &LlmResponse{raw: respBody}, nil
+}
+
+func (oa *OllamaAgent) AskConfirmation(question string) (bool, error) {
+	// Re‑use the Prompt logic – it builds the request, sends it, and
+	// returns an LlmResponse containing the raw JSON payload.
+	lr, err := oa.Prompt(question)
+	if err != nil {
+		return false, fmt.Errorf("AskConfirmation prompt failed: %w", err)
+	}
+
+	// Extract the textual response from the LlmResponse.
+	txt, err := lr.GetResponse()
+	if err != nil {
+		return false, fmt.Errorf("AskConfirmation failed to parse reply: %w", err)
+	}
+
+	// Normalize the answer.
+	txt = strings.ToLower(strings.TrimSpace(txt))
+	return txt == "yes" || txt == "y", nil
 }
 
 // ---------------------------------------------------------------------------
@@ -178,6 +198,27 @@ func (oa *OpenAIAgent) Prompt(prompt string) (*LlmResponse, error) {
 	return extractOpenAiResponse(respBody)
 }
 
+// AskConfirmation sends a short yes/no prompt to the LLM and interprets
+// the textual response as a boolean.  It uses the same HTTP client as
+// Prompt() – no external SDK required.
+func (oa *OpenAIAgent) AskConfirmation(question string) (bool, error) {
+	// Re‑use the Prompt logic – it builds the request, sends it, and
+	// returns an LlmResponse containing the raw JSON payload.
+	lr, err := oa.Prompt(question)
+	if err != nil {
+		return false, fmt.Errorf("AskConfirmation prompt failed: %w", err)
+	}
+
+	// Extract the textual response from the LlmResponse.
+	txt, err := lr.GetResponse()
+	if err != nil {
+		return false, fmt.Errorf("AskConfirmation failed to parse reply: %w", err)
+	}
+
+	// Normalize the answer.
+	txt = strings.ToLower(strings.TrimSpace(txt))
+	return txt == "yes" || txt == "y", nil
+}
 func extractOpenAiResponse(openAiResponse []byte) (*LlmResponse, error) {
 	if openAiResponse == nil {
 		return nil, fmt.Errorf("Input is empty")
