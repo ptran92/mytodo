@@ -9,12 +9,18 @@ const (
 	AIEnabledEnvVar   = "USE_AI"
 	OpenAITokenEnvVar = "OPEN_AI_API_KEY"
 	JiraURLEnvVar     = "JIRA_URL"
+	JiraEmailEnvVar   = "JIRA_EMAIL"
 	JiraTokenEnvVar   = "JIRA_TOKEN"
 	JiraProjectKeyEnv = "JIRA_PROJECT_KEY"
+	QuipTokenEnvVar   = "QUIP_TOKEN"
 )
 
 func GetJiraURL() string {
 	return os.Getenv(JiraURLEnvVar)
+}
+
+func GetJiraEmail() string {
+	return os.Getenv(JiraEmailEnvVar)
 }
 
 func GetJiraToken() string {
@@ -42,4 +48,8 @@ func AgentEnabled() bool {
 
 func GetOpenAIToken() string {
 	return os.Getenv(OpenAITokenEnvVar)
+}
+
+func GetQuipToken() string {
+	return os.Getenv(QuipTokenEnvVar)
 }

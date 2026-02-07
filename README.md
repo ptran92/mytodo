@@ -11,6 +11,8 @@ A powerful command-line TODO application built with Go that combines traditional
 - **Persistent Storage**: Tasks are automatically saved to `~/.mytodo.json`
 - **Beautiful Output**: Colored terminal output with status icons
 - **Interactive Confirmation**: Review AI-generated tasks before adding them
+- **JIRA Integration**: Query JIRA epics and generate project tracker tables
+- **Quip Integration**: Export tracker tables directly to Quip documents
 
 ## Installation
 
@@ -56,6 +58,27 @@ export OPEN_AI_API_KEY="your-api-key-here"
 ```bash
 export USE_AI="true"
 # Ensure Ollama is running on localhost:11434
+```
+
+**For JIRA Integration:**
+```bash
+export JIRA_URL="https://your-company.atlassian.net"
+export JIRA_EMAIL="your-email@company.com"
+export JIRA_TOKEN="your-jira-api-token"
+export JIRA_PROJECT_KEY="YOUR-PROJECT-KEY"
+```
+
+**For Quip Integration (Optional):**
+```bash
+export QUIP_TOKEN="your-quip-access-token"
+```
+
+**Using .env file:**
+Copy [.env.example](.env.example) to `.env` and fill in your values. Then source it:
+```bash
+cp .env.example .env
+# Edit .env with your actual values
+source .env
 ```
 
 **Disable AI Features:**
@@ -128,6 +151,47 @@ mytodo cm 0 "This is a comment on the first task"
 mytodo remove 0
 ```
 
+### JIRA Commands
+
+#### Generate Epic Tracker Table
+
+Query all stories, tasks, and bugs linked to a JIRA epic and display them in a project tracker table format:
+
+```bash
+mytodo jira-epic-tracker BWC-1426
+```
+
+**With different output formats:**
+```bash
+# Output as CSV
+mytodo jira-epic-tracker BWC-1426 --format csv
+
+# Save to file
+mytodo jira-epic-tracker BWC-1426 --output tracker.md
+
+# Post to Quip document
+mytodo jira-epic-tracker BWC-1426 --quip
+
+# Combine options
+mytodo jira-epic-tracker BWC-1426 --format csv --output tracker.csv --quip
+```
+
+The tracker table includes:
+- Ticket ID and type (story, task, bug)
+- Description/Summary
+- Owner/Assignee
+- Expected QA review date
+- Completion percentage
+- Weight percentage (relative to total estimated days)
+- Estimated and actual days to QA review
+- Status (Completed, In Progress, Not Started, etc.)
+- External dependencies
+
+**Summary statistics** are automatically calculated including:
+- Total tickets by status
+- Overall completion percentage
+- Total estimated days
+
 ### Verbose Mode
 
 Add `-v` or `--verbose` flag to any command for detailed output:
@@ -191,16 +255,23 @@ Summary: You have 5 pending tasks focused on project completion and team coordin
 ```
 mytodo/
 ├── cmd/
-│   └── cmd.go              # Main entry point
+│   └── cmd.go                    # Main entry point
 ├── lib/
 │   ├── agent/
-│   │   └── agent.go        # LLM agent implementations (OpenAI, Ollama)
+│   │   └── agent.go              # LLM agent implementations (OpenAI, Ollama)
 │   ├── commands/
-│   │   └── commands.go     # CLI command definitions
+│   │   ├── commands.go           # CLI command definitions
+│   │   └── jira_commands.go      # JIRA-specific commands
+│   ├── jira/
+│   │   ├── client.go             # JIRA API client
+│   │   └── tracker.go            # Project tracker table formatting
+│   ├── quip/
+│   │   └── client.go             # Quip API client
 │   ├── tasklist/
-│   │   └── tasklist.go     # Task data structures and persistence
+│   │   └── tasklist.go           # Task data structures and persistence
 │   └── utils/
-│       └── utils.go        # Utility functions
+│       └── utils.go              # Utility functions
+├── .env.example                  # Example environment configuration
 ├── go.mod
 └── go.sum
 ```
@@ -262,6 +333,32 @@ mytodo remove 2
 # View final status
 mytodo list
 ```
+
+## Getting API Tokens
+
+### JIRA API Token
+
+1. Log in to your Atlassian account at https://id.atlassian.com
+2. Go to **Security** > **API tokens**
+3. Click **Create API token**
+4. Give it a descriptive name (e.g., "MyTodo CLI")
+5. Copy the token and set it as `JIRA_TOKEN` environment variable
+
+### Quip Access Token
+
+1. Log in to Quip at https://quip.com
+2. Go to https://quip.com/dev/token
+3. Generate a new personal access token
+4. Copy the token and set it as `QUIP_TOKEN` environment variable
+
+### OpenAI API Key
+
+1. Log in to OpenAI at https://platform.openai.com
+2. Go to **API keys** section
+3. Create a new secret key
+4. Copy the key and set it as `OPEN_AI_API_KEY` environment variable
+
+**Security Note:** Never commit your `.env` file or share your API tokens publicly. Add `.env` to your `.gitignore` file.
 
 ## Dependencies
 
