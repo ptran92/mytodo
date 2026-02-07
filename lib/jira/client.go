@@ -279,7 +279,7 @@ func convertIssueToMap(issue *IssueScheme) map[string]interface{} {
 		// Assignee
 		if issue.Fields.Assignee != nil {
 			fields["assignee"] = map[string]interface{}{
-				"displayName": issue.Fields.Assignee.DisplayName,
+				"displayName":  issue.Fields.Assignee.DisplayName,
 				"emailAddress": issue.Fields.Assignee.EmailAddress,
 			}
 		}

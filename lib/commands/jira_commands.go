@@ -6,7 +6,11 @@ import (
 	"mytodo/lib/quip"
 	"mytodo/lib/utils"
 	"os"
+	"strings"
 
+	"github.com/gomarkdown/markdown"
+	"github.com/gomarkdown/markdown/html"
+	"github.com/gomarkdown/markdown/parser"
 	"github.com/spf13/cobra"
 )
 
@@ -103,7 +107,7 @@ func NewJiraCreateCmd() *cobra.Command {
 
 func NewJiraEpicTrackerCmd() *cobra.Command {
 	var outputFormat string
-	var saveToQuip bool
+	var quipDocURL string
 	var outputFile string
 
 	cmd := &cobra.Command{
@@ -112,7 +116,8 @@ func NewJiraEpicTrackerCmd() *cobra.Command {
 		Long: `Query all stories, tasks, and bugs linked to a JIRA epic and display them in a tracker table format.
 The table includes ticket ID, description, owner, status, estimates, and other metadata.
 
-Example: mytodo jira-epic-tracker BWC-1426`,
+Example: mytodo jira-epic-tracker ASD-146
+Example with Quip: mytodo jira-epic-tracker ASD-146 --quip "https://domain.quip.com/ABCD123/My-test-project"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			epicKey := args[0]
@@ -209,23 +214,41 @@ Example: mytodo jira-epic-tracker BWC-1426`,
 				fmt.Printf("\n✅ Saved to %s\n", outputFile)
 			}
 
-			// Post to Quip if requested
-			if saveToQuip {
+			// Append to Quip if URL is provided
+			if quipDocURL != "" {
 				quipToken := utils.GetQuipToken()
 				if quipToken == "" {
 					return fmt.Errorf("Quip not configured. Please set QUIP_TOKEN environment variable")
 				}
 
 				quipClient := quip.NewClient(quipToken)
-				title := fmt.Sprintf("Project Tracker: %s - %s", epicKey, epicName)
 
-				fmt.Println("\nCreating Quip document...")
-				url, err := quipClient.CreateDocument(title, output)
+				// Extract thread ID from Quip URL
+				// Format: https://domain.quip.com/9asfn23ujd/name-of-document
+				// Thread ID is the part after the domain before the slash
+				threadID, err := extractQuipThreadID(quipDocURL)
 				if err != nil {
-					return fmt.Errorf("failed to create Quip document: %w", err)
+					return fmt.Errorf("invalid Quip URL: %w", err)
 				}
 
-				fmt.Printf("✅ Quip document created: %s\n", url)
+				fmt.Printf("\nAppending to Quip document: %s\n", quipDocURL)
+
+				// Prepare content with separator
+				separator := fmt.Sprintf("\n\n---\n**Updated: %s**\n\n", epicKey)
+				contentToAppend := separator + output
+
+				// Try both markdown and HTML formats
+				err = quipClient.AppendTableToDocument(threadID, markdownToHTML(contentToAppend))
+				if err != nil {
+					// If HTML fails, try markdown format directly
+					fmt.Printf("HTML append failed, trying markdown format: %v\n", err)
+					err = quipClient.AppendToDocument(threadID, contentToAppend)
+					if err != nil {
+						return fmt.Errorf("failed to append to Quip document: %w", err)
+					}
+				}
+
+				fmt.Printf("✅ Content appended to Quip document: %s\n", quipDocURL)
 			}
 
 			return nil
@@ -233,8 +256,51 @@ Example: mytodo jira-epic-tracker BWC-1426`,
 	}
 
 	cmd.Flags().StringVarP(&outputFormat, "format", "f", "markdown", "Output format: markdown, csv")
-	cmd.Flags().BoolVarP(&saveToQuip, "quip", "q", false, "Save to Quip document")
+	cmd.Flags().StringVarP(&quipDocURL, "quip", "q", "", "Quip document URL to append to (e.g., https://domain.quip.com/ABC123/Document-Name)")
 	cmd.Flags().StringVarP(&outputFile, "output", "o", "", "Save output to file")
 
 	return cmd
+}
+
+// extractQuipThreadID extracts the thread ID from a Quip URL
+// Format: https://domain.quip.com/ePhzA3UgR8Wd/My-test-project
+// Thread ID: ePhzA3UgR8Wd
+func extractQuipThreadID(quipURL string) (string, error) {
+	// Remove trailing slash if present
+	quipURL = strings.TrimSuffix(quipURL, "/")
+
+	// Parse the URL
+	parts := strings.Split(quipURL, "/")
+
+	// Find the thread ID (should be after the domain)
+	// URL format: https://domain.quip.com/THREAD_ID/optional-title
+	for i, part := range parts {
+		if strings.Contains(part, "quip.com") && i+1 < len(parts) {
+			threadID := parts[i+1]
+			// Thread ID should be alphanumeric
+			if len(threadID) > 0 {
+				return threadID, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("could not extract thread ID from URL: %s", quipURL)
+}
+
+// markdownToHTML converts Markdown content to HTML
+func markdownToHTML(md string) string {
+	// Create markdown parser with extensions
+	extensions := parser.CommonExtensions | parser.AutoHeadingIDs | parser.Tables
+	p := parser.NewWithExtensions(extensions)
+
+	// Parse the markdown
+	doc := p.Parse([]byte(md))
+
+	// Create HTML renderer with extensions
+	htmlFlags := html.CommonFlags | html.HrefTargetBlank
+	opts := html.RendererOptions{Flags: htmlFlags}
+	renderer := html.NewRenderer(opts)
+
+	// Render to HTML
+	return string(markdown.Render(doc, renderer))
 }
