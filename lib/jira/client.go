@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	v3 "github.com/ctreminiom/go-atlassian/jira/v3"
 	"github.com/ctreminiom/go-atlassian/pkg/infra/models"
@@ -14,6 +15,7 @@ import (
 
 // Type aliases for easier use
 type IssueScheme = models.IssueScheme
+type ResponseScheme = models.ResponseScheme
 type IssueFieldsScheme = models.IssueFieldsScheme
 type ProjectScheme = models.ProjectScheme
 type IssueTypeScheme = models.IssueTypeScheme
@@ -254,12 +256,57 @@ func (c *Client) GetIssue(issueKey string) (map[string]interface{}, error) {
 	fields := []string{"*all"}
 	expand := []string{"renderedFields", "names", "schema", "transitions"}
 
-	issue, _, err := c.client.Issue.Get(c.ctx, issueKey, fields, expand)
+	issue, respScheme, err := c.client.Issue.Get(c.ctx, issueKey, fields, expand)
 	if err != nil {
 		return nil, fmt.Errorf("get issue failed: %w", err)
 	}
 
-	return convertIssueToMap(issue), nil
+	// First, convert the issue using the struct-based approach
+	parsedFields := convertIssueToMap(issue)
+
+	// Then, parse the raw response bytes to get ALL fields including custom ones
+	if respScheme != nil && respScheme.Bytes.Len() > 0 {
+		var rawResponse map[string]interface{}
+		if err := json.Unmarshal(respScheme.Bytes.Bytes(), &rawResponse); err == nil {
+			// Extract fields from raw response
+			if rawFields, ok := rawResponse["fields"].(map[string]interface{}); ok {
+				// Get the existing fields map
+				if existingFields, ok := parsedFields["fields"].(map[string]interface{}); ok {
+					// Merge custom fields from raw response into existing fields
+					for key, value := range rawFields {
+						// if !interestedCustomField(key) {
+						// 	continue
+						// }
+						fmt.Printf("Key %s\n", key)
+						// Only add custom fields that are not already present
+						if _, exists := existingFields[key]; !exists && value != nil {
+							existingFields[key] = value
+							fmt.Printf("Extracted custom field from raw response: %s = %v\n", key, value)
+						}
+
+					}
+					parsedFields["fields"] = existingFields
+				}
+			}
+		}
+	}
+
+	return parsedFields, nil
+}
+func interestedCustomField(key string) bool {
+	interestedFields := []string{
+		"customfield_10013", // Story Points
+		"customfield_10020", // Expected QA Date
+		"customfield_10014", // Epic Link
+		"customfield_10008", // Epic Link (alternative)
+	}
+
+	for _, field := range interestedFields {
+		if key == field {
+			return true
+		}
+	}
+	return false
 }
 
 // Helper function to convert go-atlassian IssueScheme to map[string]interface{}
@@ -351,6 +398,34 @@ func convertIssueToMap(issue *IssueScheme) map[string]interface{} {
 		// Labels
 		if len(issue.Fields.Labels) > 0 {
 			fields["labels"] = issue.Fields.Labels
+		}
+
+		// parse custom fields and add to the issues fields map
+
+		// Extract custom fields from the raw Fields map
+		// The go-atlassian library stores all fields including custom ones
+		// We need to extract story points and other custom fields
+		// Common custom fields (IDs vary by JIRA instance):
+		// - customfield_10013: Story Points (this instance)
+		// - customfield_10016: Story Points (alternative)
+		// - customfield_10020: Expected QA Date
+		// - customfield_10014/10008: Epic Link
+
+		// Use reflection or type assertion to access custom fields
+		// The Fields struct may have an Unknowns or CustomFields map
+		// For now, we'll marshal/unmarshal to capture all fields
+
+		// Marshal the entire Fields struct to JSON and back to capture custom fields
+		if fieldsJSON, err := json.Marshal(issue.Fields); err == nil {
+			var allFields map[string]interface{}
+			if err := json.Unmarshal(fieldsJSON, &allFields); err == nil {
+				// Copy custom fields (customfield_*) to our fields map
+				for key, value := range allFields {
+					if strings.HasPrefix(key, "customfield_") {
+						fields[key] = value
+					}
+				}
+			}
 		}
 
 		result["fields"] = fields

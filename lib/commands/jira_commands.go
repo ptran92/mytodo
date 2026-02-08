@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 	"mytodo/lib/jira"
 	"mytodo/lib/quip"
@@ -160,6 +161,15 @@ Example with Quip: mytodo jira-epic-tracker ASD-146 --quip "https://domain.quip.
 			}
 
 			fmt.Printf("Found %d related issues (child work items, subtasks, and linked issues)\n\n", len(issues))
+
+			fmt.Printf("Begin Debug\n")
+			for _, issue := range issues {
+				if issueKey, ok := issue["key"].(string); ok && issueKey == "BWC-209" {
+					issueJSON, _ := json.MarshalIndent(issue, "", "  ")
+					fmt.Printf("%s\n", issueJSON)
+				}
+			}
+			fmt.Printf("End Debug\n")
 
 			if len(issues) == 0 {
 				fmt.Println("No issues related to this epic")

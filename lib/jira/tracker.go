@@ -66,8 +66,13 @@ func ExtractTicketRow(issue map[string]interface{}) *TicketRow {
 		row.ExpectedQADate = qaDate
 	}
 
-	// Story points or estimated days - typically customfield_10016
-	if storyPoints, ok := fields["customfield_10016"].(float64); ok {
+	// Story points - the custom field ID varies by JIRA instance
+	// Common IDs: customfield_10013, customfield_10016, customfield_10024
+	// Try customfield_10013 first (your instance's story point field)
+	if storyPoints, ok := fields["customfield_10013"].(float64); ok {
+		row.DaysToQAEstimated = storyPoints
+	} else if storyPoints, ok := fields["customfield_10016"].(float64); ok {
+		// Fallback to another common story point field
 		row.DaysToQAEstimated = storyPoints
 	}
 
