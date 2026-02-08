@@ -224,7 +224,6 @@ Example with Quip: mytodo jira-epic-tracker ASD-146 --quip "https://domain.quip.
 				quipClient := quip.NewClient(quipToken)
 
 				// Extract thread ID from Quip URL
-				// Format: https://domain.quip.com/9asfn23ujd/name-of-document
 				// Thread ID is the part after the domain before the slash
 				threadID, err := extractQuipThreadID(quipDocURL)
 				if err != nil {
@@ -237,8 +236,7 @@ Example with Quip: mytodo jira-epic-tracker ASD-146 --quip "https://domain.quip.
 				separator := fmt.Sprintf("\n\n---\n**Updated: %s**\n\n", epicKey)
 				contentToAppend := separator + output
 
-				// Try both markdown and HTML formats
-				err = quipClient.AppendTableToDocument(threadID, markdownToHTML(contentToAppend))
+				err = quipClient.AppendTableToDocumentAfter(threadID, markdownToHTML(contentToAppend), "PROJECT_TRACKING_TABLE")
 				if err != nil {
 					// If HTML fails, try markdown format directly
 					fmt.Printf("HTML append failed, trying markdown format: %v\n", err)
